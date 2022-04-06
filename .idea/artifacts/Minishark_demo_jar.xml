@@ -1,0 +1,14 @@
+<component name="ArtifactManager">
+  <artifact build-on-make="true" name="Minishark_demo:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/Minishark_demo_jar</output-path>
+    <root id="root">
+      <element id="archive" name="Minishark_demo.jar">
+        <element id="module-output" name="Minishark_demo" />
+      </element>
+      <element id="file-copy" path="E:/BaiduNetdiskDownload/jnetpcap-1.4.r1425/jnetpcap.jar" />
+      <element id="file-copy" path="D:/apache-maven-3.6.3/repository/gnujaxp-1.0.0.jar" />
+      <element id="file-copy" path="D:/apache-maven-3.6.3/repository/jfreechart-1.0.13.jar" />
+      <element id="file-copy" path="D:/apache-maven-3.6.3/repository/jcommon-1.0.16.jar" />
+    </root>
+  </artifact>
+</component>
