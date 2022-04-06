@@ -150,7 +150,11 @@ public class PacketParser {
      * 解析出源port
      */
     private static String parseSrcPort(PcapPacket packet) {
-        if (packet.hasHeader(eth)) {
+        if (packet.hasHeader(tcp)) {
+            return Integer.toString(tcp.source());
+        } else if (packet.hasHeader(udp)) {
+            return Integer.toString(udp.source());
+        } else if (packet.hasHeader(eth)){
             return FormatUtils.mac(eth.source());
         }
         return null;
@@ -160,7 +164,11 @@ public class PacketParser {
      * 解析出目的port
      */
     private static String parseDestPort(PcapPacket packet) {
-        if (packet.hasHeader(eth)) {
+        if (packet.hasHeader(tcp)) {
+            return Integer.toString(tcp.destination());
+        } else if (packet.hasHeader(udp)) {
+            return Integer.toString(udp.destination());
+        } else if (packet.hasHeader(eth)){
             return FormatUtils.mac(eth.destination());
         }
         return null;

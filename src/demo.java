@@ -82,10 +82,12 @@ public class demo{
         JMenuBar menuBar = new JMenuBar();
         JMenu menu1 = new JMenu("文件");
         JMenu menu2 = new JMenu("捕获");
+        JMenu menu3 = new JMenu("分析");
         JMenu menu4 = new JMenu("统计");
         JMenu menu5 = new JMenu("帮助");
         menuBar.add(menu1);
         menuBar.add(menu2);
+        menuBar.add(menu3);
         menuBar.add(menu4);
         menuBar.add(menu5);
         JMenuItem item1_1 = new JMenuItem("打开");
@@ -113,6 +115,9 @@ public class demo{
         menu2.add(item2_4);
         menu2.add(item2_5);
         menu2.add(item2_6);
+        JMenuItem item3_6 = new JMenuItem("追踪流");
+        item3_6.addActionListener(ActionTraceListener);
+        menu3.add(item3_6);
         JMenuItem item4_1 = new JMenuItem("捕获概览");
         JMenuItem item4_2 = new JMenuItem("已解析的地址");
         JMenuItem item4_6 = new JMenuItem("分组长度");
@@ -208,7 +213,7 @@ public class demo{
         packpanel.add(button5);
 
         /*Packet List面板*/
-        String[] tableTitle = {"NO.","Time","Source","Destination","Protocol","Length"};    // 不想要Info了
+        String[] tableTitle = {"NO.","Time","Source","SrcPort","Destination","DestPort","Protocol","Length"};    // 不想要Info了
         packetTable = buildPacketTable(tableTitle,2,25,580,300);
         //packetTable = buildPacketTable(tableTitle,2,25,780,300);
 
@@ -310,7 +315,7 @@ public class demo{
         JLabel label;
         if (packcol != -1) {
             // 创建新的label展示细节
-            label = new JLabel(tools.getInfo(packcol, text));
+            label = new JLabel("<html><pre>" +tools.getInfo(packcol, text) + "</pre></html>");
             label.setOpaque(true);
             label.setBackground(Color.WHITE);
             // 添加标签到面板
@@ -504,10 +509,10 @@ public class demo{
                 info += getNetCards.getDeviceInfo(DEVICE);
                 /*协议信息*/
                 info += "<br>-------------------协议信息-------------------<br>";
-                // 读取第5列协议信息
+                // 读取第7列协议信息
                 ArrayList<String> protocol = new ArrayList<>();
                 for (int i = 0; i < linenum; i++) {
-                    protocol.add(model.getValueAt(i, 4).toString());
+                    protocol.add(model.getValueAt(i, 6).toString());
                 }
                 // 构造map统计协议信息
                 Map<String, Integer> protomap = new TreeMap<>();
@@ -526,10 +531,10 @@ public class demo{
                 info += "<br>-------------------其他统计信息-------------------<br>";
                 info += "已捕获分组数：\t" + linenum + "<br>";
 
-                // 读取第6列包长度信息
+                // 读取第8列包长度信息
                 ArrayList<Integer> lencol = new ArrayList<>();
                 for (int i = 0; i < linenum; i++) {
-                    lencol.add(Integer.valueOf(model.getValueAt(i, 5).toString()));
+                    lencol.add(Integer.valueOf(model.getValueAt(i, 7).toString()));
                 }
                 // 构造map统计长度信息
                 Map<Integer, Integer> lenmap = new TreeMap<>();
@@ -555,13 +560,13 @@ public class demo{
     private static final ActionListener ActionAddressListener = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
-            /*读取JTable第三列和第四列地址信息*/
+            /*读取JTable第三列和第5列地址信息*/
             ArrayList<String> addrcol = new ArrayList<>();
             int linenum = model.getRowCount();
             if (linenum > 0) {
                 for (int i=0; i<linenum; i++){
                     addrcol.add(model.getValueAt(i,2).toString());
-                    addrcol.add(model.getValueAt(i,3).toString());
+                    addrcol.add(model.getValueAt(i,4).toString());
                 }
                 /*构建JList，显示地址信息*/
                 String[] addrinfo;
@@ -586,12 +591,12 @@ public class demo{
     private static final ActionListener ActionGroupLensListener = new ActionListener() {
         @Override
         public void actionPerformed(ActionEvent e) {
-            /*读取JTable第六列包长度信息*/
+            /*读取JTable第8列包长度信息*/
             ArrayList<Integer> lencol = new ArrayList<>();
             int linenum = model.getRowCount();
             if (linenum > 0) {
                 for (int i=0; i<linenum; i++){
-                    lencol.add(Integer.valueOf(model.getValueAt(i,5).toString()));
+                    lencol.add(Integer.valueOf(model.getValueAt(i,7).toString()));
                 }
                 // 利用tools里的函数解析长度信息
                 String leninfo = tools.processLengthSeq(lencol);
@@ -626,6 +631,88 @@ public class demo{
                 Panel3.updateUI();
             } else {
                 JOptionPane.showMessageDialog(null, "请先抓取数据包！");
+            }
+        }
+    };
+
+    /**
+     * 流追踪监听器，点击则根据table中所选中的行进行流追踪
+     */
+    private static final ActionListener ActionTraceListener = new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (packetTable.getSelectedRow() >= 0) {
+                // 查看该选中行用的是TCP还是UDP协议，协议在第7列
+                String protocol = model.getValueAt(packetTable.getSelectedRow(),6).toString();
+                String srcip = model.getValueAt(packetTable.getSelectedRow(),2).toString();
+                String srcport = model.getValueAt(packetTable.getSelectedRow(),3).toString();
+                String destip = model.getValueAt(packetTable.getSelectedRow(),4).toString();
+                String destport = model.getValueAt(packetTable.getSelectedRow(),5).toString();
+                String hexinfo = "<html><pre>";
+                int linenum = model.getRowCount();
+
+                JPanel tracepanel = new JPanel();
+                tracepanel.setSize(800,600);
+                tracepanel.setLayout(null);
+                DefaultTableModel tracemodel = new DefaultTableModel(new Object[][]{}, new String[]{"NO.", "Time", "Source", "SrcPort", "Destination", "DestPort", "Protocol", "Length"});
+                JTable tracetable = new JTable(tracemodel);
+
+                if (protocol.equals("TCP") || protocol.equals("UDP")) {
+                    /*tcp或udp流追踪*/
+                    for(int i=0; i<linenum; i++) {
+                        // 查找表格中srcip,srcport,destip,destport与选中一致的项填入新的表格。
+                        if (model.getValueAt(i,2).toString().equals(srcip) && model.getValueAt(i,3).toString().equals(srcport)
+                        && model.getValueAt(i,4).toString().equals(destip) && model.getValueAt(i,5).toString().equals(destport)) {
+                            String[] line = new String[]{model.getValueAt(i,0).toString(),model.getValueAt(i,1).toString(),
+                                    model.getValueAt(i,2).toString(),model.getValueAt(i,3).toString(),
+                                    model.getValueAt(i,4).toString(),model.getValueAt(i,5).toString(),
+                                    model.getValueAt(i,6).toString(),model.getValueAt(i,7).toString()
+                            };
+                            tracemodel.insertRow(tracemodel.getRowCount(),line);
+                            // 将对应的Binary信息取出来
+                            try {
+                                hexinfo += tools.getInfo(i,"Packet in Binary");
+                            } catch (FileNotFoundException fileNotFoundException) {
+                                fileNotFoundException.printStackTrace();
+                            }
+                        }
+                    }
+                    hexinfo += "</pre></html>";
+                    JLabel hexlabel = new JLabel(hexinfo);
+                    hexlabel.setBounds(0,0,800,600);
+                    JPanel hexpanel = new JPanel();
+                    hexpanel.setSize(800,600);
+                    hexpanel.setBackground(Color.white);
+                    hexpanel.add(hexlabel);
+                    /*添加滚动条*/
+                    JScrollPane hexjsp = new JScrollPane(hexpanel);
+                    hexjsp.setBounds(0,0,800,600);
+
+
+                    tracetable.setBounds(0,0,500,800);
+                    setColumnColor(tracetable);
+                    tracetable.setShowGrid(false);
+                    /*添加滚动条*/
+                    tracetable.updateUI();
+                    tracepanel.add(tracetable);
+                    JScrollPane jsp = new JScrollPane(tracetable);
+                    jsp.setBounds(0,0,800,600);
+                    tracepanel.add(jsp);
+
+                    // 弹窗展示表格
+                    JOptionPane pane = new JOptionPane(tracepanel);
+                    JDialog dialog = pane.createDialog(null,"流追踪");
+                    dialog.setSize(800,600);
+                    dialog.show();
+                    JOptionPane datapane = new JOptionPane(hexjsp);
+                    JDialog datadialog = datapane.createDialog(null,"流追踪数据");
+                    datadialog.setSize(800,600);
+                    datadialog.show();
+                } else {
+                    JOptionPane.showMessageDialog(null, "请选中TCP或UDP协议追踪流！");
+                }
+            } else {
+                JOptionPane.showMessageDialog(null, "请先选中Packet表中数据！");
             }
         }
     };
@@ -845,7 +932,7 @@ public class demo{
 
                         for (String line : Infolines) {
                             String[] cols = line.split("\t");
-                            if (cols.length < 6) {
+                            if (cols.length < 8) {
                                 if (rest != null) {
                                     /*如果上一次读取有剩余，就将该行拼接上去再插入表格*/
                                     String newrest = rest + line;
@@ -858,7 +945,7 @@ public class demo{
                                 }
                                 continue;   // 不插入cols
                             }
-                            /*如果这一列有6组数据，但是rest却不为空，说明序号被截断了,将rest和line拼接作为新的line插入表格*/
+                            /*如果这一列有8组数据，但是rest却不为空，说明序号被截断了,将rest和line拼接作为新的line插入表格*/
                             if (rest != null) {
                                 line = rest + line;
                                 cols = line.split("\t");

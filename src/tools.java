@@ -28,7 +28,7 @@ public class tools {
     public static String getInfo(int id, String infotype) throws FileNotFoundException {
         String filename;
         boolean READING = false;
-        String info = new String("<html><pre>");
+        String info = new String("");
         /*判断打开哪种文件*/
         if (infotype == "Packet in Binary") {
             filename = "hexfile.txt";
@@ -69,7 +69,7 @@ public class tools {
             e.printStackTrace();
             return null;
         }
-        return info + "</pre></html>";
+        return info;
     }
 
     /**

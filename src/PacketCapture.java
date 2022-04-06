@@ -120,7 +120,9 @@ public class PacketCapture implements Runnable {
                 String infostr = PacketParser.getFrameNo() + "\t" +
                         PacketParser.getIntervalTime() + "\t" +
                         PacketParser.getSource() + "\t" +
+                        PacketParser.getSrcPort() + "\t" +
                         PacketParser.getDestination() + "\t" +
+                        PacketParser.getDestPort() + "\t" +
                         PacketParser.getProtocol() + "\t" +
                         PacketParser.getLength() + "\n";
 
